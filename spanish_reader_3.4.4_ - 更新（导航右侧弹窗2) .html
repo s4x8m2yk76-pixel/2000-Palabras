@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PalabraViva · 西语沉浸阅读</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F5F2EB',
+            card: '#FFFFFF',
+            'card-dark': '#1C1C1E',
+            ink: '#1E1E24',
+            'ink-muted': '#7A7A85',
+            'ink-light': '#A2A2AD',
+            terracotta: '#D45B34',
+            'terracotta-soft': '#FAEDE8',
+            amber: '#F5A623',
+            'amber-soft': '#FEF6E9',
+            emerald: '#2D8A68',
+            'emerald-soft': '#EBF7F2',
+            border: '#E8E3D9',
+            'border-subtle': '#EFEAE1'
+          },
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
+          },
+          borderRadius: {
+            '3xl': '24px',
+            '4xl': '32px'
+          },
+          boxShadow: {
+            'bento': '0 10px 35px -5px rgba(0, 0, 0, 0.04), 0 2px 8px -1px rgba(0, 0, 0, 0.02)',
+            'bento-hover': '0 18px 45px -5px rgba(0, 0, 0, 0.07), 0 4px 12px -1px rgba(0, 0, 0, 0.03)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #F5F2EB;
+      color: #1E1E24;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .word-token {
+      display: inline-block;
+      cursor: pointer;
+      padding: 1px 2px;
+      margin: 0 0.5px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    .word-token:hover {
+      background-color: #FAEDE8;
+      color: #D45B34;
+    }
+    /* 仅为已收录生词显示典雅绿色虚线 */
+    .word-saved {
+      border-bottom: 2.2px dotted #2D8A68 !important;
+      background-color: transparent !important;
+      color: inherit;
+    }
+    .word-saved:hover {
+      background-color: #EBF7F2 !important;
+      color: #2D8A68 !important;
+    }
+    .sentence-span {
+      display: inline;
+      padding: 2px 3px;
+      margin: 0 1px;
+      border-radius: 6px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    .sentence-active {
+      background-color: rgba(212, 91, 52, 0.13) !important;
+      box-shadow: 0 0 0 4px rgba(212, 91, 52, 0.13);
+      border-radius: 6px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .paragraph-block {
+      line-height: 1.85;
+    }
+    input[type=range] { -webkit-appearance: none; background: transparent; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #D45B34;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      margin-top: -6px;
+      transition: transform 0.1s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #E8E3D9;
+      border-radius: 3px;
+    }
+    .toast-anim {
+      animation: toastKeyframes 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes toastKeyframes {
+      0% { opacity: 0; transform: translate(-50%, 12px) scale(0.95); }
+      15% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      80% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -10px) scale(0.95); }
+    }
+    .drawer-overlay {
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-content {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 右侧双独立半圆磁吸挂件与悬停弹出面板样式 */
+    .dock-tab-group {
+      position: fixed;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 45;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .dock-item-wrapper {
+      position: relative;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    /* 独立半圆触手按钮：只凸出半圆形状 */
+    .dock-semi-circle-btn {
+      width: 28px;
+      height: 48px;
+      background: #FFFFFF;
+      border-top: 1px solid #E8E3D9;
+      border-bottom: 1px solid #E8E3D9;
+      border-left: 1.5px solid #E8E3D9;
+      border-right: none;
+      border-radius: 48px 0 0 48px;
+      box-shadow: -4px 6px 18px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #1E1E24;
+      font-size: 13px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      z-index: 2;
+      user-select: none;
+    }
+
+    .dock-semi-circle-btn:hover,
+    .dock-item-wrapper:hover .dock-semi-circle-btn {
+      width: 34px;
+      background: #FAEDE8;
+      color: #D45B34;
+      border-color: #D45B34;
+    }
+
+    /* 悬停向左滑出的弹出窗体面板 */
+    .dock-popup-panel {
+      position: absolute;
+      right: 100%;
+      margin-right: 6px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(18px) scale(0.97);
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      background: #FFFFFF;
+      border: 1px solid #E8E3D9;
+      box-shadow: -12px 18px 40px rgba(0, 0, 0, 0.12);
+      border-radius: 28px;
+      z-index: 1;
+    }
+
+    /* 鼠标移入触手或面板自身时保持展示 */
+    .dock-item-wrapper:hover .dock-popup-panel,
+    .dock-popup-panel:hover {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
+    }
+  </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col justify-between pb-28 sm:pb-32 selection:bg-terracotta-soft selection:text-terracotta">
+
+  <!-- 右侧两个独立半圆悬浮触手：移入即滑出对应悬浮窗，移出自动收起 -->
+  <aside class="dock-tab-group">
+
+    <!-- 半圆 1：仪表盘悬浮窗 -->
+    <div class="dock-item-wrapper">
+      <div class="dock-semi-circle-btn" title="悬停查看学习仪表盘">
+        <span>📊</span>
+      </div>
+
+      <div class="dock-popup-panel w-[330px] sm:w-[360px] p-5 max-h-[85vh] overflow-y-auto space-y-4">
+        <div class="flex items-center justify-between pb-2.5 border-b border-border-subtle">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base">📊</span>
+            <h3 class="text-xs font-bold text-ink">学习仪表盘</h3>
+          </div>
+          <span class="text-[10px] text-ink-muted font-serif">PalabraViva</span>
+        </div>
+
+        <!-- 2000 高频词汇掌握分布 -->
+        <div class="bg-canvas p-3.5 rounded-2xl border border-border-subtle">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-[11px] font-bold text-ink">2000 高频词掌握进度</span>
+            <span id="dash-rate" class="text-terracotta font-mono font-bold text-xs">0.0%</span>
+          </div>
+
+          <div class="flex items-center justify-around py-1">
+            <div class="text-center">
+              <div class="w-14 h-14 rounded-full bg-card-dark text-white flex flex-col items-center justify-center shadow-sm mx-auto">
+                <span id="dash-mastered-count" class="text-xs font-bold font-mono">0</span>
+                <span class="text-[8px] text-ink-light">已掌握</span>
+              </div>
+            </div>
+            <div class="text-center">
+              <div class="w-16 h-16 rounded-full bg-amber text-ink flex flex-col items-center justify-center shadow-xs mx-auto">
+                <span id="dash-learning-count" class="text-sm font-bold font-mono">0</span>
+                <span class="text-[8px] font-bold">复习中</span>
+              </div>
+            </div>
+            <div class="text-center">
+              <div class="w-12 h-12 rounded-full bg-terracotta-soft text-terracotta flex flex-col items-center justify-center mx-auto">
+                <span id="dash-raw-count" class="text-[11px] font-bold font-mono">2,000</span>
+                <span class="text-[8px]">待接触</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-1.5 pt-2 mt-2 border-t border-border-subtle">
+            <input type="file" id="import-words-file" accept=".json" class="hidden" onchange="handleImportWordsFile(event)">
+            <button onclick="document.getElementById('import-words-file').click()" class="px-2 py-0.5 rounded-full bg-white border border-border text-ink hover:bg-border transition text-[10px] font-medium" title="导入生词备份">📥 导入</button>
+            <button onclick="exportWordsJSON()" class="px-2 py-0.5 rounded-full bg-white border border-border text-ink hover:bg-border transition text-[10px] font-medium" title="导出生词 JSON 备份">📤 备份</button>
+            <button onclick="exportWordsAnki()" class="px-2 py-0.5 rounded-full bg-terracotta-soft text-terracotta hover:bg-terracotta hover:text-white transition text-[10px] font-medium" title="导出 Anki 词卡">🗂️ Anki</button>
+          </div>
+        </div>
+
+        <!-- 沉浸阅读日历打卡 -->
+        <div class="bg-card-dark text-white p-3.5 rounded-2xl shadow-sm">
+          <div class="flex justify-between items-center mb-1.5">
+            <h4 class="text-[11px] font-bold">沉浸阅读日历</h4>
+            <span id="calendar-month-label" class="text-[9px] text-neutral-400 font-mono">2026.10</span>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-mono text-neutral-400 pb-1 border-b border-neutral-800 mb-1">
+            <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+          </div>
+          <div id="calendar-days-grid" class="grid grid-cols-7 gap-1 text-center text-[10px] font-mono"></div>
+          <div class="pt-2 mt-1.5 border-t border-neutral-800 text-[10px] text-neutral-400 flex items-center justify-between">
+            <span>连续阅读：<strong id="calendar-streak-count" class="text-amber font-mono font-bold">1 天</strong></span>
+            <span id="calendar-today-status" class="text-[9px] text-neutral-400">● 今日已读</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 半圆 2：我的文库悬浮窗 -->
+    <div class="dock-item-wrapper">
+      <div class="dock-semi-circle-btn" title="悬停查看我的文库">
+        <span>📚</span>
+      </div>
+
+      <div class="dock-popup-panel w-[320px] sm:w-[350px] p-5 max-h-[85vh] overflow-y-auto space-y-3">
+        <div class="flex items-center justify-between pb-2.5 border-b border-border-subtle">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base">📚</span>
+            <div>
+              <h3 class="text-xs font-bold text-ink">我的文库藏书</h3>
+              <p class="text-[10px] text-ink-muted">随心选择已读篇章重温听力</p>
+            </div>
+          </div>
+          <button onclick="toggleImportBox()" class="px-2 py-1 rounded-xl bg-canvas border border-border text-ink hover:border-terracotta text-[10px] font-bold transition flex items-center gap-1">
+            <span>✍️</span>
+            <span>导入文章</span>
+          </button>
+        </div>
+
+        <!-- 篇章导入折叠输入框 -->
+        <div id="drawer-import-box" class="hidden space-y-2 bg-canvas p-3 rounded-2xl border border-border">
+          <input type="text" id="import-title" placeholder="文章标题 (例如: El arte en Barcelona)" class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-white border border-border outline-none focus:border-terracotta">
+          <textarea id="import-content" rows="4" placeholder="在此粘贴西班牙语长文（支持自由换行分段）..." class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-white border border-border font-serif outline-none focus:border-terracotta leading-relaxed"></textarea>
+          <div class="flex justify-end gap-1.5 pt-0.5">
+            <button onclick="toggleImportBox()" class="px-2.5 py-1 rounded-lg text-[10px] text-ink-muted hover:text-ink">取消</button>
+            <button onclick="confirmImportArticle()" class="px-3 py-1 rounded-lg bg-terracotta text-white text-[10px] font-bold shadow-xs">保存并开读</button>
+          </div>
+        </div>
+
+        <!-- 文库篇章列表 -->
+        <div id="drawer-articles-container" class="space-y-2 pr-0.5">
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-4 sm:py-6">
+
+    <!-- 沉浸阅读主要视图 -->
+    <section id="view-reader" class="space-y-4 sm:space-y-6">
+      <article class="bg-card border border-border-subtle rounded-4xl p-6 sm:p-12 shadow-bento transition">
+        <div class="mb-3">
+          <h2 id="article-title" class="font-serif text-2xl sm:text-4xl font-bold text-ink leading-tight tracking-tight"></h2>
+        </div>
+
+        <div class="text-xs text-ink-muted flex flex-wrap items-center gap-2 sm:gap-3 pb-5 border-b border-border-subtle mb-6">
+          <span id="article-word-count">约 120 词</span>
+          <span>•</span>
+          <span id="article-time">朗读约 1 分钟</span>
+          <span>•</span>
+          <span class="text-terracotta font-medium">💡 悬停查词，点击精析收藏，双击句子朗读</span>
+        </div>
+
+        <div id="article-body" class="font-serif text-lg sm:text-xl text-ink/90 leading-relaxed sm:leading-[1.85] space-y-6">
+        </div>
+      </article>
+    </section>
+
+  </main>
+
+  <!-- 浮动播放控制条 -->
+  <div id="floating-player-bar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-40 w-[94%] max-w-2xl bg-card/95 backdrop-blur-md border border-border-subtle rounded-3xl shadow-bento px-4 py-3 transition-all duration-300">
+    <div class="flex items-center justify-between text-[11px] text-ink-muted font-medium mb-1.5">
+      <div class="flex items-center space-x-1.5">
+        <span id="player-status-dot" class="w-2 h-2 rounded-full bg-neutral-300 inline-block"></span>
+        <span id="player-status-text">就绪</span>
+        <span class="text-neutral-300">|</span>
+        <span id="player-sentence-info" class="font-mono text-ink">第 0 / 0 句</span>
+      </div>
+      <div class="flex items-center">
+        <span id="player-speed-text" class="px-2 py-0.5 rounded-full bg-terracotta-soft text-terracotta font-mono font-bold">0.9x</span>
+      </div>
+    </div>
+
+    <div class="relative flex items-center py-1">
+      <input type="range" id="player-range-slider" min="0" max="0" value="0" step="1" 
+             oninput="handleSliderInput(this.value)"
+             onchange="handleSliderChange(this.value)"
+             class="w-full cursor-pointer h-2 bg-border-subtle rounded-lg accent-terracotta">
+    </div>
+
+    <div class="flex items-center justify-between mt-1 pt-1.5 border-t border-border-subtle text-xs">
+      <div class="flex items-center space-x-2">
+        <button onclick="playPrevSentence()" class="w-8 h-8 rounded-full hover:bg-canvas text-ink flex items-center justify-center transition" title="上一句 (快捷键 ↑)">
+          <span class="text-xs">⏮</span>
+        </button>
+
+        <button id="bar-play-toggle-btn" onclick="togglePlayArticle()" class="w-8 h-8 rounded-full bg-terracotta text-white hover:bg-terracotta/90 transition shadow-xs flex items-center justify-center" title="播放/暂停 (快捷键 空格)">
+          <span id="bar-play-icon" class="text-xs leading-none">▶</span>
+        </button>
+
+        <button onclick="playNextSentenceStep()" class="w-8 h-8 rounded-full hover:bg-canvas text-ink flex items-center justify-center transition" title="下一句 (快捷键 ↓)">
+          <span class="text-xs">⏭</span>
+        </button>
+      </div>
+
+      <div class="flex items-center space-x-1.5 text-[11px] text-ink-muted font-medium">
+        <span>语速:</span>
+        <button onclick="adjustSpeed(-0.1)" class="w-6 h-6 rounded-full bg-canvas border border-border flex items-center justify-center font-bold text-ink hover:bg-border transition" title="减速 (快捷键 ←)">-</button>
+        <button onclick="adjustSpeed(0.1)" class="w-6 h-6 rounded-full bg-canvas border border-border flex items-center justify-center font-bold text-ink hover:bg-border transition" title="加速 (快捷键 →)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-notify" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-opacity">
+    <div class="bg-card-dark text-white text-xs px-4 py-2 rounded-full shadow-lg backdrop-blur-xs font-semibold flex items-center gap-2">
+      <span id="toast-text"></span>
+    </div>
+  </div>
+
+  <!-- 单词悬停即时中文释义浮窗 (Bento 风格) -->
+  <div id="word-hover-tooltip" class="fixed z-50 pointer-events-none opacity-0 transition-opacity duration-150 px-3 py-1.5 rounded-xl bg-card-dark text-white shadow-xl border border-neutral-700/60 backdrop-blur-md text-xs flex items-center gap-1.5 transform whitespace-nowrap">
+    <span id="hover-tooltip-word" class="font-serif font-bold text-neutral-200"></span>
+    <span class="text-neutral-500 text-[10px]">·</span>
+    <span id="hover-tooltip-trans" class="font-sans font-medium text-amber"></span>
+  </div>
+
+  <!-- 单词查词与精析弹窗 -->
+  <div id="word-modal" onclick="if(event.target===this) closeModal()" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-card border-t sm:border border-border rounded-t-4xl sm:rounded-4xl p-6 sm:p-8 max-w-lg w-full shadow-2xl transform translate-y-full sm:translate-y-0 transition-transform duration-200">
+      <div class="w-10 h-1 bg-border rounded-full mx-auto mb-4 sm:hidden"></div>
+      
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h3 id="modal-word" class="font-serif text-2xl sm:text-3xl font-bold text-ink"></h3>
+            <button onclick="speakWord(currentModalWord)" class="w-8 h-8 rounded-full bg-canvas hover:bg-terracotta-soft text-terracotta transition flex items-center justify-center" title="发音">
+              🔊
+            </button>
+          </div>
+          <span id="modal-tag" class="inline-block mt-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold"></span>
+        </div>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-canvas text-ink-muted hover:text-ink flex items-center justify-center font-bold">✕</button>
+      </div>
+
+      <div class="my-4 p-4 bg-canvas rounded-2xl border border-border-subtle space-y-1.5">
+        <div class="flex items-center justify-between text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+          <span>释义与语境理解</span>
+          <div class="flex items-center gap-2 font-normal">
+            <span id="modal-api-status" class="text-[10px] text-terracotta"></span>
+            <button onclick="toggleEditDef()" class="text-ink-muted hover:text-ink text-[11px] underline">✏️ 编辑</button>
+          </div>
+        </div>
+        <div id="modal-def-display">
+          <p id="modal-def" class="text-sm font-semibold text-ink leading-relaxed font-sans"></p>
+        </div>
+        <div id="modal-def-edit-box" class="hidden pt-1">
+          <textarea id="modal-def-input" rows="2" class="w-full p-2 text-xs rounded-xl bg-white border border-border outline-none focus:border-terracotta font-sans leading-relaxed"></textarea>
+          <div class="flex justify-end gap-1.5 pt-1">
+            <button onclick="toggleEditDef()" class="px-2.5 py-1 text-[10px] text-ink-muted hover:text-ink">取消</button>
+            <button onclick="saveCustomDef()" class="px-3 py-1 text-[10px] bg-terracotta text-white rounded-lg font-semibold">确认修改</button>
+          </div>
+        </div>
+        <p id="modal-sentence" class="text-xs text-ink-muted font-serif italic pt-1 border-t border-border-subtle mt-2"></p>
+      </div>
+
+      <div id="modal-action-container" class="pt-1">
+        <button id="modal-save-btn" onclick="saveCurrentWord()" class="w-full py-2.5 px-4 rounded-full bg-terracotta text-white font-bold text-xs sm:text-sm hover:bg-terracotta/90 transition shadow-xs flex items-center justify-center text-center">
+          <span id="modal-save-btn-text">+ 收藏生词</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 2000 核心词库
+    const TOP_2000_CORE = new Set([
+      "el", "la", "de", "que", "y", "a", "en", "un", "ser", "se", "no", "haber", "por", "con", "su", "para",
+      "como", "estar", "tener", "le", "lo", "todo", "pero", "más", "hacer", "o", "poder", "decir", "este",
+      "ir", "otro", "ese", "si", "me", "ya", "ver", "porque", "dar", "cuando", "él", "muy", "sin",
+      "vez", "mucho", "saber", "qué", "sobre", "mi", "alguno", "mismo", "yo", "también", "hasta", "año",
+      "dos", "querer", "entre", "así", "primero", "desde", "grande", "eso", "ni", "nos", "llegar", "pasar",
+      "tiempo", "ella", "sí", "día", "uno", "bien", "poco", "deber", "entonces", "poner", "cosa", "tanto",
+      "hombre", "parecer", "nuestro", "tan", "donde", "ahora", "parte", "después", "vida", "quedar", "siempre",
+      "creer", "hablar", "llevar", "dejar", "nada", "cada", "seguir", "menos", "nuevo", "encontrar", "algo",
+      "sólo", "caso", "mundo", "mujer", "lugar", "mayor", "persona", "bueno", "medio", "punto",
+      "ciudad", "casa", "amigo", "viaje", "camino", "noche", "mañana", "tarde", "sol", "agua", "café", "libro",
+      "escribir", "leer", "abrir", "mirar", "escuchar", "sentir", "vivir", "gustar", "llamar", "bicicleta", "comer",
+      "pedir", "salir", "volver", "luz", "cielo", "tierra", "mar", "aire", "hora", "minuto", "puerta", "ventana",
+      "arquitectura", "historia", "arte", "calle", "piedra", "belleza", "espacio", "sombra"
+    ]);
+
+    // 常用离线词典
+    const OFFLINE_DICT = {
+      "amanecer": "m. 黎明；拂晓", "montañas": "f. pl. 群山", "montaña": "f. 山脉",
+      "especial": "adj. 特别的", "bicicleta": "f. 自行车", "viento": "m. 风",
+      "fresco": "adj. 凉爽的；清新的", "rostro": "m. 面孔", "curva": "f. 弯道",
+      "camino": "m. 道路", "paisajes": "m. pl. 风景", "paisaje": "m. 风景",
+      "inolvidables": "adj. pl. 令人难忘的", "inolvidable": "adj. 难忘的",
+      "calles": "f. pl. 街道", "calle": "f. 街道", "estrechas": "adj. f. pl. 狭窄的",
+      "estrecho": "adj. 狭窄的", "casas": "f. pl. 房屋", "casa": "f. 房屋",
+      "antiguas": "adj. f. pl. 古老的", "antiguo": "adj. 古老的", "piedra": "f. 石头",
+      "cafetería": "f. 咖啡馆", "local": "adj. 当地的", "sonrisa": "f. 微笑",
+      "cálida": "adj. f. 温暖的", "cálido": "adj. 温暖的", "bienvenida": "f. 欢迎",
+      "café": "m. 咖啡", "leche": "f. 牛奶", "dulce": "adj. 甜美的", "viajar": "v. 旅行",
+      "viaje": "m. 旅程", "ruedas": "f. pl. 车轮", "deporte": "m. 运动",
+      "forma": "f. 形式", "sentir": "v. 感觉", "mundo": "m. 世界", "corazón": "m. 心灵",
+      "descubrir": "v. 发现", "descubrí": "v. 我发现了", "verdadera": "adj. 真正的",
+      "aventura": "f. 冒险", "rápido": "adj./adv. 快速", "destino": "m. 目的地",
+      "abrazar": "v. 拥抱", "sensación": "f. 感受", "libertad": "f. 自由",
+      "pedalear": "v. 蹬车", "pedaleando": "v. 骑行中", "barrio": "m. 街区",
+      "gótico": "adj. 哥特的", "luz": "f. 光线", "sol": "m. 太阳", "edificios": "m. pl. 建筑物",
+      "sombras": "f. pl. 阴影", "suelo": "m. 地面", "arquitectura": "f. 建筑",
+      "vida": "f. 生命；生活", "cotidiana": "adj. 日常的", "gente": "f. 人们",
+      "tarde": "f. 下午；傍晚", "amigos": "m. pl. 朋友", "rincón": "m. 角落",
+      "el": "art. 阳性定冠词", "la": "art. 阴性定冠词", "de": "prep. ...的；来自",
+      "que": "conj. 关系代词", "y": "conj. 和", "a": "prep. 向；在", "en": "prep. 在...里",
+      "un": "art. 不定冠词", "una": "art. 不定冠词", "ser": "v. 是", "se": "pron. 自反代词",
+      "no": "adv. 不", "haber": "v. 有", "por": "prep. 因为；由", "con": "prep. 和...一起",
+      "su": "adj. 他的/她的", "para": "prep. 为了", "como": "adv. 如同", "estar": "v. 在；处于",
+      "tener": "v. 有", "hacer": "v. 做", "poder": "v. 能", "decir": "v. 说", "ir": "v. 去",
+      "dedo": "m. 手指", "dedos": "m. pl. 手指", "besara": "v. 若亲吻(虚拟)",
+      "punta": "f. 尖端；指尖", "permiso": "m. 许可", "pidiendo": "v. 请求着",
+      "palabra": "f. 词语；话语", "palabras": "f. pl. 话语；词句", "labio": "m. 嘴唇",
+      "labios": "m. pl. 嘴唇", "beso": "m. 吻", "besar": "v. 亲吻", "besando": "v. 亲吻中",
+      "sueño": "m. 梦；睡眠", "sueños": "m. pl. 梦想；梦境", "pedir": "v. 请求",
+      "entrar": "v. 进入", "escuchar": "v. 倾听", "salir": "v. 出来；离开",
+      "buscar": "v. 寻找", "buscaría": "v. 我会寻找", "pie": "m. 脚", "pies": "m. pl. 双脚",
+      "planta": "f. 脚底；植物", "paso": "m. 步伐", "falso": "adj. 假的；虚假的",
+      "codo": "m. 肘部", "interno": "adj. 内部的", "interna": "adj. 内侧的",
+      "parte": "f. 部分", "otra": "adj. 另一", "otro": "adj. 另一个",
+      "vez": "f. 次", "veces": "f. pl. 次数", "quiero": "v. 我想；我爱",
+      "querer": "v. 想要；爱", "estoy": "v. 我正在/处于", "estaría": "v. 会处于",
+      "ti": "pron. 你", "te": "pron. 你", "me": "pron. 我",
+      "tus": "adj. 你的(复)", "tu": "adj. 你的", "mis": "adj. 我的(复)", "mi": "adj. 我的",
+      "si": "conj. 如果", "pero": "conj. 但是", "porque": "conj. 因为",
+      "del": "prep. ...的", "al": "prep. 到...", "puedo": "v. 我能",
+      "ahora": "adv. 现在", "siempre": "adv. 总是", "nunca": "adv. 从不",
+      "todo": "adj. 全部", "nada": "pron. 没有", "algo": "pron. 某些",
+      "donde": "adv. 哪里", "cuando": "adv. 当...时", "bien": "adv. 好", "mal": "adv. 差"
+    };
+
+    const DEFAULT_LIBRARY = [
+      {
+        id: "art_01",
+        title: "Un paseo por la ciudad",
+        category: "日常阅读",
+        createdAt: "2026-10-09",
+        lastSentenceIndex: 0,
+        content: `Hoy es un día tranquilo y soleado. Salgo a caminar por las calles del barrio antiguo.
+
+El aire de la mañana es fresco y agradable. En cada esquina hay tiendas pequeñas y cafeterías con mesas al aire libre. La gente conversa tranquilamente mientras disfruta de su desayuno.
+
+Aprender un idioma requiere paciencia y constancia. Cada palabra nueva es una pequeña puerta que se abre hacia otra cultura y otra forma de ver el mundo.`
+      }
+    ];
+
+    // 全局状态管理
+    let articles = [];
+    let currentArticle = null;
+    let savedWords = [];
+    let readingHistory = [];
+    let currentView = 'reader';
+    let currentSpeed = 0.9;
+    let isPlaying = false;
+    let currentSentenceIndex = 0;
+    let sentencesList = [];
+    let currentModalWord = null;
+    let currentModalSentence = "";
+    let currentModalSentenceId = "";
+    let isModalOpen = false;
+    let wasPlayingBeforeModal = false;
+    let currentPlaySessionId = 0;
+    let activeUtterance = null;
+    let spanishVoice = null;
+    const DICT_CACHE = {};
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadReadingHistory();
+      loadLibraryAndState();
+      setupKeyboardShortcuts();
+      updateSpeedDisplays();
+      updateDashboardStats();
+      renderDynamicCalendar();
+      initWordHoverTooltip();
+    });
+
+    function loadLibraryAndState() {
+      try {
+        const storedLibrary = localStorage.getItem("pv_library_articles");
+        articles = storedLibrary ? JSON.parse(storedLibrary) : DEFAULT_LIBRARY;
+        if (!articles || articles.length === 0) articles = DEFAULT_LIBRARY;
+
+        const curId = localStorage.getItem("pv_current_article_id");
+        currentArticle = articles.find(a => a.id === curId) || articles[0];
+
+        const wordsData = localStorage.getItem("pv_saved_words");
+        savedWords = wordsData ? JSON.parse(wordsData) : [];
+      } catch (e) {
+        articles = DEFAULT_LIBRARY;
+        currentArticle = articles[0];
+        savedWords = [];
+      }
+
+      renderArticle(currentArticle);
+      renderDrawerArticles();
+    }
+
+    function persistLibrary() {
+      localStorage.setItem("pv_library_articles", JSON.stringify(articles));
+      localStorage.setItem("pv_current_article_id", currentArticle.id);
+    }
+
+    function persistSavedWords() {
+      localStorage.setItem("pv_saved_words", JSON.stringify(savedWords));
+      updateDashboardStats();
+    }
+
+    // 分句引擎：保护常见缩写及小数
+    function splitSpanishSentences(rawText) {
+      if (!rawText || !rawText.trim()) return [];
+
+      const abbreviations = [
+        "Sr\\.", "Sra\\.", "Srta\\.", "Dr\\.", "Dra\\.", "Prof\\.", "Ud\\.", "Uds\\.",
+        "p\\.ej\\.", "etc\\.", "núm\\.", "EE\\.UU\\.", "km\\.", "min\\."
+      ];
+      
+      let protectedText = rawText;
+      protectedText = protectedText.replace(/(\d+)\.(\d+)/g, "$1___DOT___$2");
+
+      abbreviations.forEach((abbr) => {
+        const re = new RegExp(`\\b${abbr}`, "gi");
+        protectedText = protectedText.replace(re, match => match.replace(/\./g, "___DOT___"));
+      });
+
+      const sentenceRegex = /[^.!?…]+[.!?…]+["'»”’\)\]]*(?=\s|$)|[^.!?…]+$/g;
+      const matches = protectedText.match(sentenceRegex) || [protectedText];
+
+      return matches
+        .map(s => s.replace(/___DOT___/g, ".").trim())
+        .filter(s => s.length > 0);
+    }
+
+    // 格式化渲染文章
+    function renderArticle(art) {
+      currentArticle = art;
+      persistLibrary();
+
+      document.getElementById("article-title").textContent = art.title;
+      
+      const bodyEl = document.getElementById("article-body");
+      bodyEl.innerHTML = "";
+
+      let sentenceCounter = 0;
+      sentencesList = [];
+      let totalWordCount = 0;
+
+      const normalizedContent = (art.content || "").replace(/\r\n/g, "\n");
+      const rawBlocks = normalizedContent.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
+
+      rawBlocks.forEach((blockText) => {
+        const blockEl = document.createElement("div");
+        blockEl.className = "paragraph-block space-y-2";
+
+        const lines = blockText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+        lines.forEach((lineText) => {
+          const lineEl = document.createElement("div");
+          lineEl.className = "paragraph-line";
+
+          const sentences = splitSpanishSentences(lineText);
+
+          sentences.forEach((sText) => {
+            const sId = `s_${sentenceCounter}`;
+            const curIndex = sentenceCounter;
+            sentenceCounter++;
+
+            sentencesList.push({ id: sId, text: sText, index: curIndex });
+
+            const sentenceSpan = document.createElement("span");
+            sentenceSpan.id = sId;
+            sentenceSpan.className = "sentence-span transition-colors duration-200 cursor-pointer";
+
+            sentenceSpan.ondblclick = (e) => {
+              e.stopPropagation();
+              jumpToSentenceAndPlay(curIndex);
+            };
+
+            const tokens = sText.split(/([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+)/);
+            tokens.forEach((token) => {
+              if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+$/.test(token)) {
+                totalWordCount++;
+                const cleanWord = token.toLowerCase();
+                const isSaved = savedWords.some(w => w.word.toLowerCase() === cleanWord);
+
+                const wordSpan = document.createElement("span");
+                wordSpan.className = `word-token ${isSaved ? 'word-saved' : ''}`;
+                wordSpan.textContent = token;
+                wordSpan.dataset.word = token;
+                wordSpan.dataset.sentenceId = sId;
+
+                wordSpan.onclick = (e) => {
+                  e.stopPropagation();
+                  openWordModal(token, sText, sId);
+                };
+
+                sentenceSpan.appendChild(wordSpan);
+              } else {
+                sentenceSpan.appendChild(document.createTextNode(token));
+              }
+            });
+
+            sentenceSpan.appendChild(document.createTextNode(" "));
+            lineEl.appendChild(sentenceSpan);
+          });
+
+          blockEl.appendChild(lineEl);
+        });
+
+        bodyEl.appendChild(blockEl);
+      });
+
+      document.getElementById("article-word-count").textContent = `约 ${totalWordCount} 词`;
+      const readingMinutes = Math.max(1, Math.round(totalWordCount / 120));
+      document.getElementById("article-time").textContent = `朗读约 ${readingMinutes} 分钟`;
+
+      const slider = document.getElementById("player-range-slider");
+      slider.max = Math.max(0, sentencesList.length - 1);
+      
+      const targetIdx = (currentSentenceIndex !== undefined && currentSentenceIndex < sentencesList.length)
+        ? currentSentenceIndex
+        : Math.min(art.lastSentenceIndex || 0, Math.max(0, sentencesList.length - 1));
+
+      slider.value = targetIdx;
+      currentSentenceIndex = targetIdx;
+      updatePlayerUI(targetIdx);
+
+      renderDrawerArticles();
+    }
+
+    // 单词悬停即时中文释义逻辑
+    let hoverTimer = null;
+    let currentHoveredWordSpan = null;
+
+    function initWordHoverTooltip() {
+      const bodyEl = document.getElementById("article-body");
+      const tooltip = document.getElementById("word-hover-tooltip");
+      if (!bodyEl || !tooltip) return;
+
+      bodyEl.addEventListener("mouseover", (e) => {
+        const wordSpan = e.target.closest(".word-token");
+        if (!wordSpan || wordSpan === currentHoveredWordSpan) return;
+
+        clearTimeout(hoverTimer);
+        currentHoveredWordSpan = wordSpan;
+        // 悬停 50ms 触发气泡，既灵敏又防止快速划过闪烁
+        hoverTimer = setTimeout(() => {
+          showWordHoverTooltip(wordSpan);
+        }, 50);
+      });
+
+      bodyEl.addEventListener("mouseout", (e) => {
+        const wordSpan = e.target.closest(".word-token");
+        if (!wordSpan) return;
+        if (!wordSpan.contains(e.relatedTarget)) {
+          if (currentHoveredWordSpan === wordSpan) {
+            currentHoveredWordSpan = null;
+            clearTimeout(hoverTimer);
+            hideWordHoverTooltip();
+          }
+        }
+      });
+
+      window.addEventListener("scroll", hideWordHoverTooltip, { passive: true });
+    }
+
+    function hideWordHoverTooltip() {
+      const tooltip = document.getElementById("word-hover-tooltip");
+      if (tooltip) {
+        tooltip.classList.add("opacity-0", "pointer-events-none");
+      }
+    }
+
+    function formatShortDef(def) {
+      if (!def) return "";
+      let clean = def.trim();
+      if (clean.length > 28) {
+        clean = clean.slice(0, 26) + "...";
+      }
+      return clean;
+    }
+
+    function getQuickChineseDef(cleanWord, rawWord) {
+      if (!cleanWord) return null;
+      // 1. 优先匹配已收录生词库
+      const saved = savedWords.find(w => w.word.toLowerCase() === cleanWord);
+      if (saved && saved.def && !saved.def.startsWith("🔍") && !saved.def.startsWith("语境生词")) {
+        return saved.def;
+      }
+      // 2. 本地离线词典精确匹配
+      if (OFFLINE_DICT[cleanWord]) {
+        return OFFLINE_DICT[cleanWord];
+      }
+      // 3. 在线翻译缓存匹配
+      if (DICT_CACHE[cleanWord]) {
+        return DICT_CACHE[cleanWord];
+      }
+      // 4. 复数和常见词干推导
+      if (cleanWord.endsWith("es") && cleanWord.length > 4) {
+        const stem = cleanWord.slice(0, -2);
+        if (OFFLINE_DICT[stem]) return OFFLINE_DICT[stem];
+        if (DICT_CACHE[stem]) return DICT_CACHE[stem];
+      }
+      if (cleanWord.endsWith("s") && cleanWord.length > 3) {
+        const stem = cleanWord.slice(0, -1);
+        if (OFFLINE_DICT[stem]) return OFFLINE_DICT[stem];
+        if (DICT_CACHE[stem]) return DICT_CACHE[stem];
+      }
+      return null;
+    }
+
+    function showWordHoverTooltip(wordSpan) {
+      const tooltip = document.getElementById("word-hover-tooltip");
+      if (!tooltip || !wordSpan) return;
+
+      const rawWord = wordSpan.dataset.word || wordSpan.textContent.trim();
+      const cleanWord = rawWord.toLowerCase().replace(/[^a-záéíóúñü]/g, '');
+      if (!cleanWord) return;
+
+      const wordEl = document.getElementById("hover-tooltip-word");
+      const transEl = document.getElementById("hover-tooltip-trans");
+
+      wordEl.textContent = rawWord;
+
+      const rect = wordSpan.getBoundingClientRect();
+      const placeBelow = rect.top < 45;
+      const top = placeBelow ? (rect.bottom + 6) : (rect.top - 6);
+
+      let left = rect.left + rect.width / 2;
+      left = Math.max(70, Math.min(window.innerWidth - 70, left));
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+
+      if (placeBelow) {
+        tooltip.style.transform = 'translate(-50%, 0)';
+      } else {
+        tooltip.style.transform = 'translate(-50%, -100%)';
+      }
+
+      const def = getQuickChineseDef(cleanWord, rawWord);
+      if (def) {
+        transEl.textContent = formatShortDef(def);
+        tooltip.classList.remove("opacity-0", "pointer-events-none");
+      } else {
+        transEl.textContent = "🔍 查询中...";
+        tooltip.classList.remove("opacity-0", "pointer-events-none");
+        fetchOnlineDefinition(cleanWord).then(res => {
+          if (currentHoveredWordSpan === wordSpan) {
+            if (res) {
+              transEl.textContent = formatShortDef(res);
+            } else {
+              transEl.textContent = "暂无释义 (点击精查)";
+            }
+          }
+        });
+      }
+    }
+
+    async function openWordModal(word, sentence, sentenceId) {
+      isModalOpen = true;
+      currentModalWord = word;
+      currentModalSentence = sentence;
+      currentModalSentenceId = sentenceId;
+
+      wasPlayingBeforeModal = isPlaying;
+      if (isPlaying) {
+        isPlaying = false;
+        currentPlaySessionId++;
+        stopSpeechEngine();
+        updatePlayButtons(false);
+      }
+
+      const targetSentenceIdx = sentencesList.findIndex(s => s.id === sentenceId);
+      if (targetSentenceIdx !== -1) {
+        currentSentenceIndex = targetSentenceIdx;
+        if (currentArticle) {
+          currentArticle.lastSentenceIndex = targetSentenceIdx;
+          persistLibrary();
+        }
+        updatePlayerUI(targetSentenceIdx);
+        highlightSentence(sentenceId);
+      }
+
+      const editBox = document.getElementById("modal-def-edit-box");
+      const display = document.getElementById("modal-def-display");
+      if (editBox) editBox.classList.add("hidden");
+      if (display) display.classList.remove("hidden");
+
+      const cleanWord = word.toLowerCase().replace(/[^a-záéíóúñü]/g, '');
+      document.getElementById("modal-word").textContent = word;
+
+      const isCore = TOP_2000_CORE.has(cleanWord);
+      const tagEl = document.getElementById("modal-tag");
+      if (isCore) {
+        tagEl.textContent = "高频 2000 核心词";
+        tagEl.className = "inline-block mt-1 text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-soft text-emerald font-bold";
+      } else {
+        tagEl.textContent = "拓展生词";
+        tagEl.className = "inline-block mt-1 text-[10px] px-2.5 py-0.5 rounded-full bg-terracotta-soft text-terracotta font-bold";
+      }
+
+      const statusEl = document.getElementById("modal-api-status");
+      if (statusEl) statusEl.textContent = "";
+
+      const savedWordItem = savedWords.find(w => w.word.toLowerCase() === cleanWord);
+      let initialDef = savedWordItem ? savedWordItem.def : (OFFLINE_DICT[cleanWord] || DICT_CACHE[cleanWord]);
+
+      if (initialDef) {
+        document.getElementById("modal-def").textContent = initialDef;
+      } else {
+        document.getElementById("modal-def").textContent = "🔍 正在快速翻译释义...";
+        if (statusEl) statusEl.textContent = "查询中...";
+      }
+
+      document.getElementById("modal-sentence").textContent = `“${sentence}”`;
+
+      const isSaved = savedWords.some(w => w.word.toLowerCase() === cleanWord);
+      const actionContainer = document.getElementById("modal-action-container");
+      if (isSaved) {
+        if (actionContainer) actionContainer.classList.add("hidden");
+      } else {
+        if (actionContainer) actionContainer.classList.remove("hidden");
+        const saveBtnText = document.getElementById("modal-save-btn-text");
+        if (saveBtnText) saveBtnText.textContent = "+ 收藏生词";
+      }
+
+      speakWord(word);
+
+      const modal = document.getElementById("word-modal");
+      modal.classList.remove("opacity-0", "pointer-events-none");
+      modal.querySelector("div").classList.remove("translate-y-full");
+
+      if (!initialDef) {
+        const onlineDef = await fetchOnlineDefinition(cleanWord);
+        if (currentModalWord && currentModalWord.toLowerCase().replace(/[^a-záéíóúñü]/g, '') === cleanWord) {
+          if (onlineDef) {
+            document.getElementById("modal-def").textContent = onlineDef;
+            if (statusEl) statusEl.textContent = "● 在线词典";
+          } else {
+            document.getElementById("modal-def").textContent = "语境生词（可在右上角点击✏️添加自定义释义）";
+            if (statusEl) statusEl.textContent = "";
+          }
+        }
+      }
+    }
+
+    function closeModal(shouldResume = null) {
+      isModalOpen = false;
+      const modal = document.getElementById("word-modal");
+      modal.classList.add("opacity-0", "pointer-events-none");
+      modal.querySelector("div").classList.add("translate-y-full");
+
+      const resume = shouldResume !== null ? shouldResume : wasPlayingBeforeModal;
+      wasPlayingBeforeModal = false;
+
+      if (resume && currentView === 'reader') {
+        setTimeout(() => {
+          resumeOrStartPlay();
+        }, 180);
+      }
+    }
+
+    function saveCurrentWord() {
+      if (!currentModalWord) return;
+      const cleanWord = currentModalWord.toLowerCase().replace(/[^a-záéíóúñü]/g, '');
+      const existingIdx = savedWords.findIndex(w => w.word.toLowerCase() === currentModalWord.toLowerCase());
+
+      if (existingIdx >= 0) {
+        savedWords.splice(existingIdx, 1);
+        showToast(`已将 "${currentModalWord}" 移出生词库`);
+      } else {
+        const modalText = document.getElementById("modal-def") ? document.getElementById("modal-def").textContent.trim() : "";
+        let def = modalText;
+        if (!def || def.startsWith("🔍正在") || def.startsWith("语境生词")) {
+          def = DICT_CACHE[cleanWord] || OFFLINE_DICT[cleanWord] || (modalText && !modalText.startsWith("🔍") ? modalText : "生词与语境记忆");
+        }
+
+        savedWords.unshift({
+          id: 'w_' + Date.now(),
+          word: currentModalWord,
+          def: def,
+          sentence: currentModalSentence,
+          sentenceId: currentModalSentenceId,
+          sourceArticleId: currentArticle ? currentArticle.id : 'custom',
+          sourceArticleTitle: currentArticle ? currentArticle.title : '西语文章',
+          timestamp: new Date().toLocaleDateString()
+        });
+        showToast(`已将 "${currentModalWord}" 存入生词库`);
+      }
+
+      persistSavedWords();
+      renderArticle(currentArticle);
+      closeModal();
+    }
+
+    function openDrawer() {
+      const drawer = document.getElementById("shelf-drawer");
+      const overlay = document.getElementById("drawer-overlay");
+      const content = document.getElementById("drawer-content");
+
+      drawer.classList.remove("pointer-events-none");
+      overlay.classList.remove("opacity-0");
+      content.classList.remove("translate-x-full");
+
+      renderDrawerArticles();
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById("shelf-drawer");
+      const overlay = document.getElementById("drawer-overlay");
+      const content = document.getElementById("drawer-content");
+
+      overlay.classList.add("opacity-0");
+      content.classList.add("translate-x-full");
+      setTimeout(() => {
+        drawer.classList.add("pointer-events-none");
+      }, 300);
+    }
+
+    function renderDrawerArticles() {
+      const container = document.getElementById("drawer-articles-container");
+      if (!container) return;
+      container.innerHTML = "";
+
+      articles.forEach((art) => {
+        const isCurrent = currentArticle && currentArticle.id === art.id;
+        const wordsApprox = art.content.split(/\s+/).length;
+
+        const cardEl = document.createElement("div");
+        cardEl.className = `p-3 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${isCurrent ? 'bg-terracotta-soft/70 border-terracotta' : 'bg-white border-border hover:border-terracotta/50'}`;
+        cardEl.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCurrent ? 'bg-terracotta text-white' : 'bg-canvas text-ink-muted'}">${art.category || '阅读篇章'}</span>
+              <h4 class="text-xs font-bold text-ink mt-1 line-clamp-1">${art.title}</h4>
+            </div>
+            ${articles.length > 1 ? `
+              <button onclick="event.stopPropagation(); deleteArticle('${art.id}')" class="text-xs text-neutral-400 hover:text-red-500 p-0.5" title="删除文章">✕</button>
+            ` : ''}
+          </div>
+          <div class="mt-2 flex items-center justify-between text-[10px] text-ink-muted">
+            <span>约 ${wordsApprox} 词</span>
+            <span class="font-mono">${art.createdAt || '近期'}</span>
+            ${isCurrent ? '<span class="text-terracotta font-bold">● 正在阅读</span>' : '<span class="text-ink font-semibold">点击切篇 →</span>'}
+          </div>
+        `;
+
+        cardEl.onclick = () => {
+          switchArticle(art.id);
+        };
+
+        container.appendChild(cardEl);
+      });
+    }
+
+    function switchArticle(articleId) {
+      if (isPlaying) pausePlayArticle();
+
+      if (currentArticle) {
+        currentArticle.lastSentenceIndex = currentSentenceIndex;
+        persistLibrary();
+      }
+
+      const target = articles.find(a => a.id === articleId);
+      if (target) {
+        renderArticle(target);
+        showToast(`已切换至: 《${target.title.slice(0, 14)}...》`);
+      }
+    }
+
+    function deleteArticle(articleId) {
+      if (articles.length <= 1) {
+        showToast("文库中至少需保留一篇西班牙语读物");
+        return;
+      }
+      articles = articles.filter(a => a.id !== articleId);
+      if (currentArticle.id === articleId) {
+        currentArticle = articles[0];
+        renderArticle(currentArticle);
+      }
+      persistLibrary();
+      renderDrawerArticles();
+      showToast("✓ 篇章已移出文库");
+    }
+
+    function toggleImportBox() {
+      const box = document.getElementById("drawer-import-box");
+      if (box) box.classList.toggle("hidden");
+    }
+
+    function confirmImportArticle() {
+      const title = document.getElementById("import-title").value.trim() || "未命名西语读物";
+      const content = document.getElementById("import-content").value.trim();
+
+      if (!content) {
+        showToast("请输入或粘贴西班牙语正文！");
+        return;
+      }
+
+      const newArt = {
+        id: 'art_' + Date.now(),
+        title: title,
+        category: "用户导入",
+        createdAt: new Date().toLocaleDateString(),
+        lastSentenceIndex: 0,
+        content: content
+      };
+
+      articles.unshift(newArt);
+      persistLibrary();
+
+      document.getElementById("import-title").value = "";
+      document.getElementById("import-content").value = "";
+      toggleImportBox();
+
+      switchArticle(newArt.id);
+      showToast("✓ 新篇章已加入文库并开启阅读");
+    }
+
+    // 语音引擎与朗读控制
+    function initVoices() {
+      if (!('speechSynthesis' in window)) return;
+      const voices = window.speechSynthesis.getVoices();
+      spanishVoice = voices.find(v => v.lang === 'es-ES' && (v.name.includes('Natural') || v.name.includes('Siri') || v.name.includes('Google') || v.name.includes('Premium'))) ||
+                     voices.find(v => v.lang === 'es-ES') ||
+                     voices.find(v => v.lang.startsWith('es'));
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = initVoices;
+      initVoices();
+    }
+
+    function stopSpeechEngine() {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      activeUtterance = null;
+    }
+
+    function speakSentence(text, onEndCallback) {
+      if (!('speechSynthesis' in window)) return;
+
+      const thisSession = ++currentPlaySessionId;
+      stopSpeechEngine();
+
+      setTimeout(() => {
+        if (thisSession !== currentPlaySessionId) return;
+
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        activeUtterance = utterance;
+        utterance.lang = 'es-ES';
+        if (spanishVoice) utterance.voice = spanishVoice;
+        utterance.rate = currentSpeed;
+
+        utterance.onend = () => {
+          activeUtterance = null;
+          if (thisSession === currentPlaySessionId && isPlaying) {
+            if (onEndCallback) onEndCallback();
+          }
+        };
+
+        utterance.onerror = (e) => {
+          activeUtterance = null;
+          console.warn("Speech status:", e.error);
+        };
+
+        window.speechSynthesis.speak(utterance);
+
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }, 45);
+    }
+
+    function speakWord(word) {
+      if (!word || !('speechSynthesis' in window)) return;
+      stopSpeechEngine();
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(word);
+        activeUtterance = utterance;
+        utterance.lang = 'es-ES';
+        if (spanishVoice) utterance.voice = spanishVoice;
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
+      }, 30);
+    }
+
+    function togglePlayArticle() {
+      if (isPlaying) {
+        pausePlayArticle();
+      } else {
+        resumeOrStartPlay();
+      }
+    }
+
+    function resumeOrStartPlay() {
+      if (sentencesList.length === 0) return;
+      isPlaying = true;
+      updatePlayButtons(true);
+      showToast("▶ 正在朗读 (空格可暂停)");
+      markTodayReadingActivity();
+      playSentenceAt(currentSentenceIndex);
+    }
+
+    function pausePlayArticle() {
+      isPlaying = false;
+      currentPlaySessionId++;
+      stopSpeechEngine();
+      updatePlayButtons(false);
+      showToast("⏸ 朗读已暂停 (按空格继续)");
+      document.getElementById("player-status-text").textContent = "已暂停";
+    }
+
+    function updatePlayButtons(playing) {
+      document.getElementById("bar-play-icon").textContent = playing ? "⏸" : "▶";
+      document.getElementById("player-status-text").textContent = playing ? "朗读中" : "已暂停";
+      const dot = document.getElementById("player-status-dot");
+      if (playing) {
+        dot.className = "w-2 h-2 rounded-full bg-terracotta inline-block animate-pulse";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-neutral-300 inline-block";
+      }
+    }
+
+    function playSentenceAt(index) {
+      if (!isPlaying) return;
+      if (index >= sentencesList.length) {
+        pausePlayArticle();
+        currentSentenceIndex = 0;
+        if (currentArticle) currentArticle.lastSentenceIndex = 0;
+        updatePlayerUI(0);
+        showToast("✓ 全篇朗读完毕");
+        return;
+      }
+
+      currentSentenceIndex = index;
+      if (currentArticle) {
+        currentArticle.lastSentenceIndex = index;
+        persistLibrary();
+      }
+      updatePlayerUI(index);
+
+      const item = sentencesList[index];
+      highlightSentence(item.id);
+
+      speakSentence(item.text, () => {
+        if (isPlaying) {
+          playSentenceAt(index + 1);
+        }
+      });
+    }
+
+    function playNextSentenceStep() {
+      if (sentencesList.length === 0) return;
+      let nextIdx = currentSentenceIndex + 1;
+      if (nextIdx >= sentencesList.length) {
+        showToast("已经是最后一句了");
+        return;
+      }
+      jumpToSentenceAndPlay(nextIdx);
+      showToast(`⏭ 下一句 (${nextIdx + 1}/${sentencesList.length})`);
+    }
+
+    function playPrevSentence() {
+      if (sentencesList.length === 0) return;
+      let prevIdx = currentSentenceIndex - 1;
+      if (prevIdx < 0) {
+        showToast("已经是第一句了");
+        return;
+      }
+      jumpToSentenceAndPlay(prevIdx);
+      showToast(`⏮ 上一句 (${prevIdx + 1}/${sentencesList.length})`);
+    }
+
+    function jumpToSentenceAndPlay(index) {
+      currentSentenceIndex = index;
+      if (currentArticle) {
+        currentArticle.lastSentenceIndex = index;
+        persistLibrary();
+      }
+      updatePlayerUI(index);
+      const item = sentencesList[index];
+      if (!item) return;
+
+      highlightSentence(item.id);
+
+      if (isPlaying) {
+        speakSentence(item.text, () => {
+          if (isPlaying) playSentenceAt(index + 1);
+        });
+      } else {
+        speakSentence(item.text, null);
+      }
+    }
+
+    function handleSliderInput(val) {
+      const idx = parseInt(val, 10);
+      currentSentenceIndex = idx;
+      updatePlayerUI(idx);
+      if (sentencesList[idx]) {
+        highlightSentence(sentencesList[idx].id);
+      }
+    }
+
+    function handleSliderChange(val) {
+      const idx = parseInt(val, 10);
+      if (currentArticle) {
+        currentArticle.lastSentenceIndex = idx;
+        persistLibrary();
+      }
+      jumpToSentenceAndPlay(idx);
+      const slider = document.getElementById("player-range-slider");
+      if (slider) slider.blur();
+    }
+
+    function updatePlayerUI(index) {
+      const total = sentencesList.length;
+      document.getElementById("player-sentence-info").textContent = `第 ${total > 0 ? index + 1 : 0} / ${total} 句`;
+      
+      const slider = document.getElementById("player-range-slider");
+      slider.value = index;
+    }
+
+    function highlightSentence(sId) {
+      clearSentenceHighlight();
+      const el = document.getElementById(sId);
+      if (el) {
+        el.classList.add("sentence-active");
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function clearSentenceHighlight() {
+      document.querySelectorAll(".sentence-active").forEach(el => {
+        el.classList.remove("sentence-active");
+      });
+    }
+
+    function adjustSpeed(delta) {
+      let newSpeed = Math.round((currentSpeed + delta) * 10) / 10;
+      if (newSpeed < 0.5) newSpeed = 0.5;
+      if (newSpeed > 2.0) newSpeed = 2.0;
+      currentSpeed = newSpeed;
+      updateSpeedDisplays();
+      showToast(`⚡ 语速: ${currentSpeed.toFixed(1)}x`);
+
+      if (isPlaying && sentencesList[currentSentenceIndex]) {
+        speakSentence(sentencesList[currentSentenceIndex].text, () => {
+          if (isPlaying) playSentenceAt(currentSentenceIndex + 1);
+        });
+      }
+    }
+
+    function updateSpeedDisplays() {
+      const str = `${currentSpeed.toFixed(1)}x`;
+      const badge = document.getElementById("speed-indicator-badge");
+      if (badge) badge.textContent = str;
+      const playerSpeed = document.getElementById("player-speed-text");
+      if (playerSpeed) playerSpeed.textContent = str;
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast-notify");
+      document.getElementById("toast-text").textContent = msg;
+      toast.classList.remove("opacity-0", "toast-anim");
+      void toast.offsetWidth;
+      toast.classList.add("toast-anim");
+    }
+
+    function setupKeyboardShortcuts() {
+      window.addEventListener("keydown", (e) => {
+        const activeEl = document.activeElement;
+        const activeTag = activeEl ? activeEl.tagName.toLowerCase() : "";
+
+        if (activeTag === "textarea" || (activeTag === "input" && activeEl.type !== "range")) {
+          return;
+        }
+
+        if (activeEl && activeEl.id === "player-range-slider") {
+          activeEl.blur();
+        }
+
+        if (isModalOpen) {
+          if (e.code === "Escape" || e.code === "Space") {
+            closeModal();
+            e.preventDefault();
+          }
+          return;
+        }
+
+        if (currentView === "reader") {
+          switch (e.code) {
+            case "Space":
+              e.preventDefault();
+              togglePlayArticle();
+              break;
+            case "ArrowUp":
+              e.preventDefault();
+              playPrevSentence();
+              break;
+            case "ArrowDown":
+              e.preventDefault();
+              playNextSentenceStep();
+              break;
+            case "ArrowLeft":
+              e.preventDefault();
+              adjustSpeed(-0.1);
+              break;
+            case "ArrowRight":
+              e.preventDefault();
+              adjustSpeed(0.1);
+              break;
+          }
+        }
+      });
+    }
+
+    function updateDashboardStats() {
+      const totalSaved = savedWords.length;
+      const learningEl = document.getElementById("dash-learning-count");
+      if (learningEl) learningEl.textContent = totalSaved;
+      
+      const mastered = Math.min(totalSaved, Math.floor(totalSaved * 0.35));
+      const masteredEl = document.getElementById("dash-mastered-count");
+      if (masteredEl) masteredEl.textContent = mastered;
+
+      const remaining = Math.max(0, 2000 - totalSaved);
+      const rawEl = document.getElementById("dash-raw-count");
+      if (rawEl) rawEl.textContent = remaining.toLocaleString();
+
+      const rate = ((totalSaved / 2000) * 100).toFixed(1);
+      const rateEl = document.getElementById("dash-rate");
+      if (rateEl) rateEl.textContent = `${rate}%`;
+      renderDynamicCalendar();
+    }
+
+    async function fetchWithTimeout(url, timeoutMs = 2500) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return response;
+      } catch (err) {
+        clearTimeout(id);
+        throw err;
+      }
+    }
+
+    async function fetchOnlineDefinition(word) {
+      const clean = word.toLowerCase().replace(/[^a-záéíóúñü]/g, '');
+      if (!clean) return null;
+      if (DICT_CACHE[clean]) return DICT_CACHE[clean];
+      if (OFFLINE_DICT[clean]) return OFFLINE_DICT[clean];
+
+      try {
+        const url1 = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=es|zh-CN`;
+        const res1 = await fetchWithTimeout(url1, 2200);
+        if (res1.ok) {
+          const data1 = await res1.json();
+          if (data1 && data1.responseData && data1.responseData.translatedText) {
+            const trans = data1.responseData.translatedText.trim();
+            if (trans && trans.toLowerCase() !== clean.toLowerCase()) {
+              DICT_CACHE[clean] = trans;
+              return trans;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("MyMemory timeout/error, trying fallback...");
+      }
+
+      try {
+        const url2 = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=zh-CN&dt=t&q=${encodeURIComponent(clean)}`;
+        const res2 = await fetchWithTimeout(url2, 2200);
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2 && data2[0] && data2[0][0] && data2[0][0][0]) {
+            const trans2 = data2[0][0][0].trim();
+            DICT_CACHE[clean] = trans2;
+            return trans2;
+          }
+        }
+      } catch (e) {
+        console.warn("Fallback engine timeout:", e);
+      }
+
+      return null;
+    }
+
+    function toggleEditDef() {
+      const display = document.getElementById("modal-def-display");
+      const editBox = document.getElementById("modal-def-edit-box");
+      const isEditing = !editBox.classList.contains("hidden");
+
+      if (isEditing) {
+        editBox.classList.add("hidden");
+        display.classList.remove("hidden");
+      } else {
+        document.getElementById("modal-def-input").value = document.getElementById("modal-def").textContent;
+        editBox.classList.remove("hidden");
+        display.classList.add("hidden");
+      }
+    }
+
+    function saveCustomDef() {
+      const newDef = document.getElementById("modal-def-input").value.trim();
+      if (newDef) {
+        document.getElementById("modal-def").textContent = newDef;
+        if (currentModalWord) {
+          DICT_CACHE[currentModalWord.toLowerCase()] = newDef;
+          const saved = savedWords.find(w => w.word.toLowerCase() === currentModalWord.toLowerCase());
+          if (saved) {
+            saved.def = newDef;
+            persistSavedWords();
+          }
+        }
+        showToast("✓ 释义已自定义保存");
+      }
+      toggleEditDef();
+    }
+
+    function exportWordsJSON() {
+      if (savedWords.length === 0) {
+        showToast("记忆库暂无生词可导出");
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedWords, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `PalabraViva_Backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast(`✓ 已导出 ${savedWords.length} 个生词备份`);
+    }
+
+    function exportWordsAnki() {
+      if (savedWords.length === 0) {
+        showToast("记忆库暂无生词可导出");
+        return;
+      }
+      let csvContent = "\uFEFF单词\t释义\t原文语境例句\t来源文章\t收藏日期\n";
+      savedWords.forEach(w => {
+        const cleanWord = (w.word || '').replace(/\t|\n/g, ' ');
+        const cleanDef = (w.def || '').replace(/\t|\n/g, ' ');
+        const cleanSentence = (w.sentence || '').replace(/\t|\n/g, ' ');
+        const cleanTitle = (w.sourceArticleTitle || '').replace(/\t|\n/g, ' ');
+        const cleanDate = (w.timestamp || '');
+        csvContent += `${cleanWord}\t${cleanDef}\t${cleanSentence}\t${cleanTitle}\t${cleanDate}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/tab-separated-values;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `PalabraViva_Anki_${new Date().toISOString().slice(0, 10)}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast(`✓ 已生成 Anki 词卡文件 (${savedWords.length} 词)`);
+    }
+
+    function handleImportWordsFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!Array.isArray(imported)) {
+            showToast("文件格式不正确，需为生词库数组 JSON 文件");
+            return;
+          }
+
+          let addCount = 0;
+          imported.forEach(item => {
+            if (!item.word) return;
+            const exists = savedWords.some(w => w.word.toLowerCase() === item.word.toLowerCase());
+            if (!exists) {
+              savedWords.push(item);
+              addCount++;
+            }
+          });
+
+          persistSavedWords();
+          if (currentArticle) renderArticle(currentArticle);
+          showToast(`✓ 成功导入 ${addCount} 个新词`);
+        } catch (err) {
+          showToast("解析备份文件失败: " + err.message);
+        }
+        event.target.value = "";
+      };
+      reader.readAsText(file);
+    }
+
+    function getTodayDateStr() {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function loadReadingHistory() {
+      try {
+        const stored = localStorage.getItem("pv_reading_history");
+        readingHistory = stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        readingHistory = [];
+      }
+      const todayStr = getTodayDateStr();
+      if (readingHistory.length === 0) {
+        readingHistory.push(todayStr);
+        persistReadingHistory();
+      }
+    }
+
+    function persistReadingHistory() {
+      localStorage.setItem("pv_reading_history", JSON.stringify(readingHistory));
+    }
+
+    function markTodayReadingActivity() {
+      const todayStr = getTodayDateStr();
+      if (!readingHistory.includes(todayStr)) {
+        readingHistory.push(todayStr);
+        persistReadingHistory();
+        renderDynamicCalendar();
+        showToast("✓ 今日阅读打卡成功！");
+      }
+    }
+
+    function calculateStreak() {
+      const historySet = new Set(readingHistory);
+      let streak = 0;
+      let checkDate = new Date();
+      const todayStr = getTodayDateStr();
+
+      if (!historySet.has(todayStr)) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+
+      while (true) {
+        const y = checkDate.getFullYear();
+        const m = String(checkDate.getMonth() + 1).padStart(2, '0');
+        const d = String(checkDate.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+        if (historySet.has(dateKey)) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      return Math.max(1, streak);
+    }
+
+    function renderDynamicCalendar() {
+      const grid = document.getElementById("calendar-days-grid");
+      const monthLabel = document.getElementById("calendar-month-label");
+      const streakEl = document.getElementById("calendar-streak-count");
+      const todayStatusEl = document.getElementById("calendar-today-status");
+      if (!grid) return;
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const todayDate = now.getDate();
+      const todayStr = getTodayDateStr();
+
+      if (monthLabel) {
+        monthLabel.textContent = `${currentYear}.${String(currentMonth + 1).padStart(2, '0')}`;
+      }
+
+      const firstDayOfWeek = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7;
+      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const prevMonthTotalDays = new Date(currentYear, currentMonth, 0).getDate();
+
+      grid.innerHTML = "";
+
+      for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        const dayNum = prevMonthTotalDays - i;
+        const cell = document.createElement("span");
+        cell.className = "py-1 text-neutral-700 select-none text-[11px]";
+        cell.textContent = dayNum;
+        grid.appendChild(cell);
+      }
+
+      const historySet = new Set(readingHistory);
+      for (let day = 1; day <= totalDays; day++) {
+        const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = day === todayDate;
+        const isRead = historySet.has(dateKey);
+
+        const cell = document.createElement("span");
+        cell.textContent = day;
+        cell.className = "py-1 rounded-full cursor-pointer transition flex items-center justify-center text-[11px] ";
+
+        if (isToday) {
+          if (isRead) {
+            cell.className += "bg-amber text-card-dark font-bold shadow-xs ring-1 ring-amber-300";
+            cell.title = "今天：已完成阅读打卡";
+          } else {
+            cell.className += "ring-1 ring-amber text-amber font-bold";
+            cell.title = "今天：尚未打卡 (点击可打卡)";
+          }
+        } else if (isRead) {
+          cell.className += "bg-neutral-800 text-amber font-semibold";
+          cell.title = `${dateKey}：已打卡`;
+        } else {
+          cell.className += "text-neutral-500 hover:text-neutral-300";
+          cell.title = `${dateKey}：未打卡`;
+        }
+
+        cell.onclick = () => {
+          if (isToday && !isRead) {
+            markTodayReadingActivity();
+          } else {
+            showToast(`${dateKey}: ${isRead ? '✓ 当天已完成阅读' : '当天未记录阅读'}`);
+          }
+        };
+
+        grid.appendChild(cell);
+      }
+
+      const totalCells = firstDayOfWeek + totalDays;
+      const remainingCells = (7 - (totalCells % 7)) % 7;
+      for (let nextDay = 1; nextDay <= remainingCells; nextDay++) {
+        const cell = document.createElement("span");
+        cell.className = "py-1 text-neutral-700 select-none text-[11px]";
+        cell.textContent = nextDay;
+        grid.appendChild(cell);
+      }
+
+      const streak = calculateStreak();
+      if (streakEl) streakEl.textContent = `${streak} 天`;
+
+      const isTodayDone = historySet.has(todayStr);
+      if (todayStatusEl) {
+        if (isTodayDone) {
+          todayStatusEl.className = "text-[10px] text-amber font-semibold";
+          todayStatusEl.textContent = "● 今日已打卡";
+        } else {
+          todayStatusEl.className = "text-[10px] text-neutral-400";
+          todayStatusEl.textContent = "○ 今日未打卡 (开始朗读自动打卡)";
+        }
+      }
+    }
+  </script>
+</body>
+</html>
